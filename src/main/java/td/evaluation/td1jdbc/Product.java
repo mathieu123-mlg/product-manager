@@ -38,7 +38,9 @@ public class Product {
                 "\n\tid=" + id +
                 ", name='" + name + '\'' +
                 ", creationDatetime=" + creationDatetime +
-                ", category=" + category +
-                "\n}";
+                "\n\t, category=Category{" +
+                "\n\t\tid=" + category.getId() +
+                ", name='" + category.getName() + '\'' +
+                "\n\t}\n}";
     }
 }

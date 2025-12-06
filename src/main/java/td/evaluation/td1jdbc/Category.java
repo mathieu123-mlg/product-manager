@@ -11,6 +11,10 @@ public class Category {
         this.name = name;
     }
 
+    public int getId() {
+        return id;
+    }
+
     public String getName() {
         return name;
     }
@@ -29,9 +33,9 @@ public class Category {
 
     @Override
     public String toString() {
-        return "\nCategory{" +
+        return "Category{" +
                 "\n\tid=" + id +
                 ", name='" + name + '\'' +
-                "\n}";
+                "\n}\n";
     }
 }
