@@ -1,11 +1,10 @@
 package td.evaluation.td1jdbc;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DataRetriever {
     private Connection dbConnection;
@@ -57,7 +56,7 @@ public class DataRetriever {
             while (result.next()) {
                 int id = result.getInt("id");
                 String name = result.getString("name");
-                Float price = result.getFloat("price");
+                double price = result.getDouble("price");
                 Instant creationDatetime = result.getTimestamp("creation_datetime").toInstant();
                 int category_id = result.getInt("category_id");
                 String category_name = result.getString("category_name");
@@ -125,10 +124,175 @@ public class DataRetriever {
     }
 
     public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax) {
-        return null;
+        List<Product> products = new ArrayList<>();
+
+        if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
+            throw new IllegalArgumentException("creationMin must be before creationMax");
+        }
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT " +
+                "    product.id, product.name, product.price, product.creation_datetime, " +
+                "    category.id as category_id, category.name as category_name " +
+                "FROM product " +
+                "JOIN product_category as category ON product.id = category.product_id "
+        );
+
+        List<String> conditions = new ArrayList<>();
+        List<Object> parameters = new ArrayList<>();
+
+        if (productName != null && !productName.trim().isEmpty()) {
+            conditions.add("product.name ILIKE ?");
+            parameters.add("%" + productName + "%");
+        }
+
+        if (categoryName != null && !categoryName.trim().isEmpty()) {
+            conditions.add("category.name ILIKE ?");
+            parameters.add("%" + categoryName + "%");
+        }
+
+        if (creationMin != null) {
+            conditions.add("product.creation_datetime >= ?");
+            parameters.add(Timestamp.from(creationMin));
+        }
+
+        if (creationMax != null) {
+            conditions.add("product.creation_datetime <= ?");
+            parameters.add(Timestamp.from(creationMax));
+        }
+
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ");
+            sql.append(String.join(" AND ", conditions));
+        }
+
+        String query = sql.toString();
+
+        try (PreparedStatement preparedStatement = dbConnection.prepareStatement(query)) {
+
+            for (int i = 0; i < parameters.size(); i++) {
+                Object param = parameters.get(i);
+                if (param instanceof String) {
+                    preparedStatement.setString(i + 1, (String) param);
+                } else if (param instanceof Timestamp) {
+                    preparedStatement.setTimestamp(i + 1, (Timestamp) param);
+                }
+            }
+
+            try (ResultSet result = preparedStatement.executeQuery()) {
+                while (result.next()) {
+                    Timestamp timestamp = result.getTimestamp("creation_datetime");
+                    Instant creationInstant = null;
+                    if (timestamp != null) {
+                        creationInstant = timestamp.toInstant();
+                    }
+
+                    products.add(new Product(
+                            result.getInt("id"),
+                            result.getString("name"),
+                            creationInstant,
+                            new Category(
+                                    result.getInt("category_id"),
+                                    result.getString("category_name")
+                            )
+                    ));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de la récupération des Produits avec critères: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return products;
     }
 
     public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax, int page, int size) {
-        return null;
+        List<Product> products = new ArrayList<>();
+
+        if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
+            throw new IllegalArgumentException("creationMin must be before creationMax");
+        }
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT " +
+                        "    product.id, product.name, product.price, product.creation_datetime, " +
+                        "    category.id as category_id, category.name as category_name " +
+                        "FROM product " +
+                        "JOIN product_category as category ON product.id = category.product_id "
+        );
+
+        List<String> conditions = new ArrayList<>();
+        List<Object> parameters = new ArrayList<>();
+
+        if (productName != null && !productName.trim().isEmpty()) {
+            conditions.add("product.name ILIKE ?");
+            parameters.add("%" + productName + "%");
+        }
+
+        if (categoryName != null && !categoryName.trim().isEmpty()) {
+            conditions.add("category.name ILIKE ?");
+            parameters.add("%" + categoryName + "%");
+        }
+
+        if (creationMin != null) {
+            conditions.add("product.creation_datetime >= ?");
+            parameters.add(Timestamp.from(creationMin));
+        }
+
+        if (creationMax != null) {
+            conditions.add("product.creation_datetime <= ?");
+            parameters.add(Timestamp.from(creationMax));
+        }
+
+        if (!conditions.isEmpty()) {
+            sql.append(" WHERE ");
+            sql.append(String.join(" AND ", conditions));
+        }
+
+        sql.append(" limit ? offset ? ");
+        parameters.add(size);
+        parameters.add((page - 1) * size);
+
+        String query = sql.toString();
+
+        try (PreparedStatement preparedStatement = dbConnection.prepareStatement(query)) {
+            for (int i = 0; i < parameters.size(); i++) {
+                Object param = parameters.get(i);
+                if (param instanceof String) {
+                    preparedStatement.setString(i + 1, (String) param);
+                } else if (param instanceof Timestamp) {
+                    preparedStatement.setTimestamp(i + 1, (Timestamp) param);
+                } else if (param instanceof Integer) {
+                    preparedStatement.setInt(i + 1, (Integer) param);
+                }
+            }
+
+            try (ResultSet result = preparedStatement.executeQuery()) {
+                while (result.next()) {
+                    Timestamp timestamp = result.getTimestamp("creation_datetime");
+                    Instant creationInstant = null;
+                    if (timestamp != null) {
+                        creationInstant = timestamp.toInstant();
+                    }
+
+                    products.add(new Product(
+                            result.getInt("id"),
+                            result.getString("name"),
+                            creationInstant,
+                            new Category(
+                                    result.getInt("category_id"),
+                                    result.getString("category_name")
+                            )
+                    ));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Erreur lors de la récupération des Produits avec critères: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return products;
     }
 }
