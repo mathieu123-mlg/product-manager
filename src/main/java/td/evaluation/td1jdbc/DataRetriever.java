@@ -4,10 +4,9 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRetriever {
-    private Connection dbConnection;
+    private final Connection dbConnection;
 
     public DataRetriever() {
         this.dbConnection = new DBConnection().getDBCOnnection();
@@ -126,6 +125,10 @@ public class DataRetriever {
     public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax) {
         List<Product> products = new ArrayList<>();
 
+        if (getAllProducts().isEmpty()) {
+            return new ArrayList<>();
+        }
+
         if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
             throw new IllegalArgumentException("creationMin must be before creationMax");
         }
@@ -209,6 +212,10 @@ public class DataRetriever {
 
     public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax, int page, int size) {
         List<Product> products = new ArrayList<>();
+
+        if (getAllProducts().isEmpty()) {
+            return new ArrayList<>();
+        }
 
         if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
             throw new IllegalArgumentException("creationMin must be before creationMax");
