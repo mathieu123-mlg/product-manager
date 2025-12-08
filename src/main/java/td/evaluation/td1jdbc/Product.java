@@ -34,7 +34,7 @@ public class Product {
 
     @Override
     public String toString() {
-        return "\nProduct{" +
+        return "Product{" +
                 "\n\tid=" + id +
                 ", name='" + name + '\'' +
                 ", creationDatetime=" + creationDatetime +

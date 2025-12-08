@@ -36,6 +36,6 @@ public class Category {
         return "Category{" +
                 "\n\tid=" + id +
                 ", name='" + name + '\'' +
-                "\n}\n";
+                "\n}";
     }
 }

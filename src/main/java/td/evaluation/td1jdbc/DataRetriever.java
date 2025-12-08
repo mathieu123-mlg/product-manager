@@ -18,7 +18,7 @@ public class DataRetriever {
 
     public List<Category> getAllCategories() {
         List<Category> categories = new ArrayList<>();
-        String category_list = "SELECT id, name from product_category;";
+        String category_list = new StringBuilder("SELECT id, name from product_category;").toString();
 
         try (
             PreparedStatement preparedStatement = dbConnection.prepareStatement(category_list);
@@ -41,12 +41,13 @@ public class DataRetriever {
 
     private List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String product_list =
+        String product_list = new StringBuilder(
                 "select " +
                 "    product.id, product.name, product.price, product.creation_datetime, " +
                 "    category.id as category_id, category.name as category_name " +
                 "from product " +
-                "JOIN product_category as category ON product.id = category.product_id;";
+                "JOIN product_category as category ON product.id = category.product_id;"
+        ).toString();
 
         try (
                 PreparedStatement preparedStatement = dbConnection.prepareStatement(product_list);
@@ -88,13 +89,14 @@ public class DataRetriever {
         int offset = (page - 1) * size;
 
         List<Product> products = new ArrayList<>();
-        String query =
+        String query = new StringBuilder(
                 "select " +
-                        "    product.id, product.name, product.price, product.creation_datetime, " +
-                        "    category.id as category_id, category.name as category_name " +
-                        "from product " +
-                        "JOIN product_category as category ON product.id = category.product_id " +
-                        "order by id limit ? offset ?;";
+                "   product.id, product.name, product.price, product.creation_datetime, " +
+                "   category.id as category_id, category.name as category_name " +
+                "from product " +
+                "JOIN product_category as category ON product.id = category.product_id " +
+                "order by id limit ? offset ?;"
+        ).toString();
 
         try (PreparedStatement preparedStatement = dbConnection.prepareStatement(query)) {
             preparedStatement.setInt(1, size);
@@ -223,10 +225,10 @@ public class DataRetriever {
 
         StringBuilder sql = new StringBuilder(
                 "SELECT " +
-                        "    product.id, product.name, product.price, product.creation_datetime, " +
-                        "    category.id as category_id, category.name as category_name " +
-                        "FROM product " +
-                        "JOIN product_category as category ON product.id = category.product_id "
+                "   product.id, product.name, product.price, product.creation_datetime, " +
+                "   category.id as category_id, category.name as category_name " +
+                "FROM product " +
+                "JOIN product_category as category ON product.id = category.product_id "
         );
 
         List<String> conditions = new ArrayList<>();

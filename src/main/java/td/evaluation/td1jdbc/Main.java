@@ -26,12 +26,12 @@ public class Main {
                 dataRetriever.getProductList(1, 3),
                 dataRetriever.getProductList(2, 2)
         );
-        System.out.println(products1);
+        products1.forEach(System.out::println);
         System.out.println("==================================================================================================");
 
 
         System.out.println("================================================");
-        System.out.println("       Liste des Produits par critere");
+        System.out.println("        Liste des Produits par critere");
         System.out.println("=================================================");
         List<List<Product>> products2 = List.of(
                 dataRetriever.getProductsByCriteria(
