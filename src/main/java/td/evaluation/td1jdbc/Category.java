@@ -34,8 +34,16 @@ public class Category {
     @Override
     public String toString() {
         return "Category{" +
-                "\n\tid=" + id +
-                ", name='" + name + '\'' +
-                "\n}";
+               "id=" + id +
+               ", name='" + name + '\'' +
+               '}';
     }
+
+    //    @Override
+//    public String toString() {
+//        return "Category{" +
+//                "\n\tid=" + id +
+//                ", name='" + name + '\'' +
+//                "\n}";
+//    }
 }

@@ -35,12 +35,22 @@ public class Product {
     @Override
     public String toString() {
         return "Product{" +
-                "\n\tid=" + id +
-                ", name='" + name + '\'' +
-                ", creationDatetime=" + creationDatetime +
-                "\n\t, category=Category{" +
-                "\n\t\tid=" + category.getId() +
-                ", name='" + category.getName() + '\'' +
-                "\n\t}\n}";
+               "id=" + id +
+               ", name='" + name + '\'' +
+               ", creationDatetime=" + creationDatetime +
+               ", category=" + category +
+               '}';
     }
+
+    //    @Override
+//    public String toString() {
+//        return "Product{" +
+//                "\n\tid=" + id +
+//                ", name='" + name + '\'' +
+//                ", creationDatetime=" + creationDatetime +
+//                "\n\t, category=Category{" +
+//                "\n\t\tid=" + category.getId() +
+//                ", name='" + category.getName() + '\'' +
+//                "\n\t}\n}";
+//    }
 }
