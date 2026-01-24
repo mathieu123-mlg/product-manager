@@ -13,7 +13,7 @@ public class DataRetriever {
 
         try {
             Statement stm = conn.createStatement();
-            ResultSet rs = stm.executeQuery("SELECT id, name from product_category;");
+            ResultSet rs = stm.executeQuery("SELECT id, name from product_category order by id;");
 
             List<Category> categories = new ArrayList<>();
             while (rs.next()) {
@@ -51,9 +51,8 @@ public class DataRetriever {
             ps.setInt(1, size);
             ps.setInt(2, (page - 1) * size);
 
-            System.out.println("sql ? :" + sql);
-
-            return getProducts(ps);
+            ResultSet rs = ps.executeQuery();
+            return getProducts(rs);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
@@ -61,26 +60,23 @@ public class DataRetriever {
         }
     }
 
-    public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax) {
+    public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin,
+                                               Instant creationMax) {
+
         if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
             throw new IllegalArgumentException("creationMin must be before creationMax");
         }
 
-        StringBuilder sql = new StringBuilder("""
-                SELECT \
-                    product.id, product.name, product.price, product.creation_datetime, \
-                    category.id as category_id, category.name as category_name \
-                FROM product \
-                JOIN product_category as category ON product.id = category.product_id where 1 = 1""");
+        String sql = buildProductsQuery(productName, categoryName, creationMin, creationMax);
+        sql = sql.replace(" limit ? offset ?", "");
 
         Connection conn = dbConnection.getDBCOnnection();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql.toString());
-            buildProductsStatement(sql, ps, productName, categoryName, creationMin, creationMax, null, null);
+            PreparedStatement ps = conn.prepareStatement(sql);
+            buildProductsParams(ps, productName, categoryName, creationMin, creationMax, null, null);
 
-            System.out.println("sql ? : " + sql.toString());
-
-            return getProducts(ps);
+            ResultSet rs = ps.executeQuery();
+            return getProducts(rs);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
@@ -88,30 +84,21 @@ public class DataRetriever {
         }
     }
 
-    public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin, Instant creationMax, int page, int size) {
+    public List<Product> getProductsByCriteria(String productName, String categoryName, Instant creationMin,
+                                               Instant creationMax, int page, int size) {
+
         if (creationMin != null && creationMax != null && creationMin.isAfter(creationMax)) {
             throw new IllegalArgumentException("creationMin must be before creationMax");
         }
 
-        if (page <= 0 || size <= 0) {
-            throw new IllegalArgumentException("page and size must be positive");
-        }
-
-        StringBuilder sql = new StringBuilder("""
-                SELECT \
-                    product.id, product.name, product.price, product.creation_datetime, \
-                    category.id as category_id, category.name as category_name \
-                FROM product \
-                JOIN product_category as category ON product.id = category.product_id where 1 = 1""");
-
+        String sql = buildProductsQuery(productName, categoryName, creationMin, creationMax);
         Connection conn = dbConnection.getDBCOnnection();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql.toString());
-            buildProductsStatement(sql, ps, productName, categoryName, creationMin, creationMax, page, size);
+            PreparedStatement ps = conn.prepareStatement(sql);
+            buildProductsParams(ps, productName, categoryName, creationMin, creationMax, page, size);
 
-            System.out.println("sql ? : " + sql.toString());
-
-            return getProducts(ps);
+            ResultSet rs = ps.executeQuery();
+            return getProducts(rs);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         } finally {
@@ -119,70 +106,77 @@ public class DataRetriever {
         }
     }
 
-    private List<Product> getProducts(PreparedStatement ps) throws SQLException {
-        ResultSet rs = ps.executeQuery();
+    private List<Product> getProducts(ResultSet rs) throws SQLException {
         List<Product> products = new ArrayList<>();
         while (rs.next()) {
-            products.add(new Product(
-                    rs.getInt("id"),
-                    rs.getString("name"),
-                    rs.getTimestamp("creation_datetime").toInstant(),
-                    new Category(
-                            rs.getInt("category_id"),
-                            rs.getString("category_name")
-                    )
-            ));
+            Timestamp creationtimestamp = rs.getTimestamp("creation_datetime");
+            products.add(
+                    new Product(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            creationtimestamp.toInstant() == null
+                                    ? null
+                                    : creationtimestamp.toInstant(),
+                            new Category(
+                                    rs.getInt("category_id"),
+                                    rs.getString("category_name")
+                            )
+                    ));
         }
         return products;
     }
 
-    private void buildProductsStatement(
-            StringBuilder sql,
-            PreparedStatement ps,
-            String productName,
-            String categoryName,
-            Instant creationMin,
-            Instant creationMax,
-            Integer page,
-            Integer size
-    ) throws SQLException {
+    private String buildProductsQuery(String productName, String categoryName, Instant creationMin,
+                                      Instant creationMax) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT p.id, p.name, p.price, p.creation_datetime,
+                       c.id AS category_id, c.name AS category_name
+                FROM product p
+                JOIN product_category c ON p.id = c.product_id
+                WHERE 1 = 1""");
 
-        int index = 1;
-        if (productName != null) {
-            sql.append(" AND product.name ilike ? ");
-            ps.setString(++index, '%' + productName + '%');
-            index += 1;
+        if (productName != null && !productName.isBlank()) {
+            sql.append(" AND p.name ILIKE ?");
         }
 
-        if (categoryName != null) {
-            sql.append(" AND category.name ilike ? ");
-            ps.setString(index, "%" + categoryName + "%");
-            index += 1;
+        if (categoryName != null && !categoryName.isBlank()) {
+            sql.append(" AND c.name ILIKE ?");
         }
 
         if (creationMin != null) {
-            sql.append(" AND creation_datetime >= ? ");
-            ps.setTimestamp(index, Timestamp.from(creationMin));
-            index += 1;
+            sql.append(" AND p.creation_datetime >= ?");
         }
 
         if (creationMax != null) {
-            sql.append(" AND creation_datetime <= ? ");
-            ps.setTimestamp(index, Timestamp.from(creationMax));
-            index += 1;
+            sql.append(" AND p.creation_datetime <= ?");
         }
 
-        sql.append(" order by product.id");
+        sql.append(" ORDER BY p.id limit ? offset ?;");
+        return sql.toString();
+    }
 
-        if (size != null) {
-            sql.append(" limit ? ");
-            ps.setInt(index, size);
-            index += 1;
+    private void buildProductsParams(PreparedStatement preparedStatement, String productName, String categoryName,
+                                     Instant creationMin, Instant creationMax, Integer page, Integer size) throws SQLException {
+        int index = 1;
+        if (productName != null && !productName.isBlank()) {
+            preparedStatement.setString(index++, "%" + productName + "%");
+        }
+
+        if (categoryName != null && !categoryName.isBlank()) {
+            preparedStatement.setString(index++, "%" + categoryName + "%");
+        }
+
+        if (creationMin != null) {
+            preparedStatement.setTimestamp(index++, Timestamp.from(creationMin));
+        }
+
+        if (creationMax != null) {
+            preparedStatement.setTimestamp(index++, Timestamp.from(creationMax));
         }
 
         if (page != null && size != null) {
-            sql.append(" offset ? ");
-            ps.setInt(index, (page - 1) * size);
+            preparedStatement.setInt(index++, size);
+            preparedStatement.setInt(index, (page - 1) * size);
         }
     }
 }
